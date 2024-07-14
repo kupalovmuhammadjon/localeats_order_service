@@ -1,0 +1,6 @@
+.env
+Makefile
+.vscode
+vendor
+.idea
+app.log
