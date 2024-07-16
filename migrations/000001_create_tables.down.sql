@@ -1,0 +1,7 @@
+DROP TABLE IF EXISTS delivery_routes;
+DROP TABLE IF EXISTS working_hours;
+DROP TABLE IF EXISTS payments;
+DROP TABLE IF EXISTS reviews;
+DROP TABLE IF EXISTS orders;
+DROP TABLE IF EXISTS dishes;
+DROP TYPE IF EXISTS payment_method;
