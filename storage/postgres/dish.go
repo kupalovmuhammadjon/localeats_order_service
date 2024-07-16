@@ -102,12 +102,12 @@ func (d *DishRepo) GetDishes(ctx context.Context, pagination *pb.Pagination) (*p
 	from
 		dishes
 	where
-		deleted_at is null 
+		deleted_at is null and kitchen_id = $1
 	`
 	query += fmt.Sprintf(" offset %d", (pagination.Page-1)*pagination.Limit)
 	query += fmt.Sprintf(" limit %d", pagination.Limit)
 
-	rows, err := d.Db.QueryContext(ctx, query)
+	rows, err := d.Db.QueryContext(ctx, query, pagination.Id)
 	if err != nil {
 		return nil, err
 	}
@@ -142,7 +142,7 @@ func (d *DishRepo) GetDishById(ctx context.Context, id *pb.Id) (*pb.DishInfo, er
 
 	var nutritionInfo sql.NullString
 	err := row.Scan(&dish.Id, &dish.KitchenId, &dish.Name, &dish.Description, &dish.Price,
-		&dish.Category, &dish.Ingredients, &dish.Allergens, &nutritionInfo, &dish.DietaryInfo,
+		&dish.Category, pq.Array(&dish.Ingredients), pq.Array(&dish.Allergens), &nutritionInfo, pq.Array(&dish.DietaryInfo),
 		&dish.Available, &dish.CreatedAt, &dish.UpdatedAt)
 	if err != nil {
 		return nil, err
@@ -199,7 +199,7 @@ func (d *DishRepo) UpdateNutritionInfo(ctx context.Context, info *pb.NutritionIn
 		dietary_info = $3,
 		updated_at = now()
 	where
-		id = $7 and deleted_at is null
+		id = $4 and deleted_at is null
 	returning id, kitchen_id, name, description, price, category, ingredients, allergens, 
 	nutrition_info, dietary_info, available, created_at, updated_at
 	`
@@ -215,7 +215,7 @@ func (d *DishRepo) UpdateNutritionInfo(ctx context.Context, info *pb.NutritionIn
 	if err != nil {
 		return nil, err
 	}
-	row := d.Db.QueryRowContext(ctx, query, info.Allergens, string(data), info.DietaryInfo)
+	row := d.Db.QueryRowContext(ctx, query, pq.Array(info.Allergens), string(data), pq.Array(info.DietaryInfo), info.Id)
 
 	var nutritionInfo sql.NullString
 	err = row.Scan(&res.Id, &res.KitchenId, &res.Name, &res.Description, &res.Price, &res.Category, pq.Array(&res.Ingredients),

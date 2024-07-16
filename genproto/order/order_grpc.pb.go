@@ -25,8 +25,8 @@ type OrderClient interface {
 	CreateOrder(ctx context.Context, in *ReqCreateOrder, opts ...grpc.CallOption) (*OrderInfo, error)
 	UpdateOrderStatus(ctx context.Context, in *Status, opts ...grpc.CallOption) (*StatusRes, error)
 	GetOrderById(ctx context.Context, in *Id, opts ...grpc.CallOption) (*OrderInfo, error)
-	GetOrdersForUser(ctx context.Context, in *Id, opts ...grpc.CallOption) (*Orders, error)
-	GetOrdersForChef(ctx context.Context, in *Id, opts ...grpc.CallOption) (*Orders, error)
+	GetOrdersForUser(ctx context.Context, in *Filter, opts ...grpc.CallOption) (*Orders, error)
+	GetOrdersForChef(ctx context.Context, in *Filter, opts ...grpc.CallOption) (*Orders, error)
 	DeleteOrder(ctx context.Context, in *Id, opts ...grpc.CallOption) (*Void, error)
 	ValidateOrderId(ctx context.Context, in *Id, opts ...grpc.CallOption) (*Void, error)
 	RecommendDishes(ctx context.Context, in *Filter, opts ...grpc.CallOption) (*Recommendations, error)
@@ -70,7 +70,7 @@ func (c *orderClient) GetOrderById(ctx context.Context, in *Id, opts ...grpc.Cal
 	return out, nil
 }
 
-func (c *orderClient) GetOrdersForUser(ctx context.Context, in *Id, opts ...grpc.CallOption) (*Orders, error) {
+func (c *orderClient) GetOrdersForUser(ctx context.Context, in *Filter, opts ...grpc.CallOption) (*Orders, error) {
 	out := new(Orders)
 	err := c.cc.Invoke(ctx, "/order.Order/GetOrdersForUser", in, out, opts...)
 	if err != nil {
@@ -79,7 +79,7 @@ func (c *orderClient) GetOrdersForUser(ctx context.Context, in *Id, opts ...grpc
 	return out, nil
 }
 
-func (c *orderClient) GetOrdersForChef(ctx context.Context, in *Id, opts ...grpc.CallOption) (*Orders, error) {
+func (c *orderClient) GetOrdersForChef(ctx context.Context, in *Filter, opts ...grpc.CallOption) (*Orders, error) {
 	out := new(Orders)
 	err := c.cc.Invoke(ctx, "/order.Order/GetOrdersForChef", in, out, opts...)
 	if err != nil {
@@ -149,8 +149,8 @@ type OrderServer interface {
 	CreateOrder(context.Context, *ReqCreateOrder) (*OrderInfo, error)
 	UpdateOrderStatus(context.Context, *Status) (*StatusRes, error)
 	GetOrderById(context.Context, *Id) (*OrderInfo, error)
-	GetOrdersForUser(context.Context, *Id) (*Orders, error)
-	GetOrdersForChef(context.Context, *Id) (*Orders, error)
+	GetOrdersForUser(context.Context, *Filter) (*Orders, error)
+	GetOrdersForChef(context.Context, *Filter) (*Orders, error)
 	DeleteOrder(context.Context, *Id) (*Void, error)
 	ValidateOrderId(context.Context, *Id) (*Void, error)
 	RecommendDishes(context.Context, *Filter) (*Recommendations, error)
@@ -173,10 +173,10 @@ func (UnimplementedOrderServer) UpdateOrderStatus(context.Context, *Status) (*St
 func (UnimplementedOrderServer) GetOrderById(context.Context, *Id) (*OrderInfo, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetOrderById not implemented")
 }
-func (UnimplementedOrderServer) GetOrdersForUser(context.Context, *Id) (*Orders, error) {
+func (UnimplementedOrderServer) GetOrdersForUser(context.Context, *Filter) (*Orders, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetOrdersForUser not implemented")
 }
-func (UnimplementedOrderServer) GetOrdersForChef(context.Context, *Id) (*Orders, error) {
+func (UnimplementedOrderServer) GetOrdersForChef(context.Context, *Filter) (*Orders, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetOrdersForChef not implemented")
 }
 func (UnimplementedOrderServer) DeleteOrder(context.Context, *Id) (*Void, error) {
@@ -265,7 +265,7 @@ func _Order_GetOrderById_Handler(srv interface{}, ctx context.Context, dec func(
 }
 
 func _Order_GetOrdersForUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(Id)
+	in := new(Filter)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -277,13 +277,13 @@ func _Order_GetOrdersForUser_Handler(srv interface{}, ctx context.Context, dec f
 		FullMethod: "/order.Order/GetOrdersForUser",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(OrderServer).GetOrdersForUser(ctx, req.(*Id))
+		return srv.(OrderServer).GetOrdersForUser(ctx, req.(*Filter))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _Order_GetOrdersForChef_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(Id)
+	in := new(Filter)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -295,7 +295,7 @@ func _Order_GetOrdersForChef_Handler(srv interface{}, ctx context.Context, dec f
 		FullMethod: "/order.Order/GetOrdersForChef",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(OrderServer).GetOrdersForChef(ctx, req.(*Id))
+		return srv.(OrderServer).GetOrdersForChef(ctx, req.(*Filter))
 	}
 	return interceptor(ctx, in, info, handler)
 }

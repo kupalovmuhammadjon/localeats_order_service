@@ -6,13 +6,13 @@ import (
 	"testing"
 )
 
-func newOrderepo() *Orderepo {
+func newOrderepo() *OrderRepo {
 	db, err := ConnectDB()
 	if err != nil {
 		panic(err)
 	}
 
-	return &Orderepo{Db: db}
+	return &OrderRepo{Db: db}
 }
 
 func TestCreateOrder(t *testing.T) {
@@ -42,6 +42,46 @@ func TestUpdateOrderStatus(t *testing.T){
 	if err != nil {
 		t.Error(err)
 	}
-	
+}
+
+func TestGetOrderById(t *testing.T){
+
+	o := newOrderepo()
+
+	_, err := o.GetOrderById(context.Background(), "8529dbef-1313-4c78-b990-7a84ecb7d2c3")
+	if err != nil {
+		t.Error(err)
+	}
+}
+
+func TestGetOrdersForUser(t *testing.T){
+
+	o := newOrderepo()
+
+	filter := pb.Filter{
+		Id:    "8529dbef-1313-4c78-b990-7a84ecb7d2c3",
+		Page:  1,
+		Limit: 10,
+	}
+	_, err := o.GetOrdersForUser(context.Background(), &filter)
+	if err != nil {
+		t.Error(err)
+	}
+}
+
+
+func TestGetOrdersForChef(t *testing.T){
+
+	o := newOrderepo()
+
+	filter := pb.Filter{
+		Id:    "8529dbef-1313-4c78-b990-7a84ecb7d2c3",
+		Page:  1,
+		Limit: 10,
+	}
+	_, err := o.GetOrdersForChef(context.Background(), &filter)
+	if err != nil {
+		t.Error(err)
+	}
 }
 

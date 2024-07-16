@@ -28,7 +28,6 @@ func NewDishService(sysConfig *models.SystemConfig) *DishService {
 }
 
 func (d *DishService) CreateDish(ctx context.Context, dish *pb.ReqCreateDish) (*pb.DishInfo, error) {
-
 	_, err := d.kitchenClient.ValidateKitchenId(ctx, &pbk.Id{Id: dish.KitchenId})
 	if err != nil {
 		d.log.Info("Invalid kitchen Id ", zap.Error(err))
@@ -50,14 +49,37 @@ func (d *DishService) UpdateDish(ctx context.Context, dish *pb.ReqUpdateDish) (*
 		return nil, err
 	}
 
+	kitchen, err := d.kitchenClient.GetKitchenById(ctx, &pbk.Id{Id: res.KitchenId})
+	if err != nil {
+		d.log.Error("failed to get kitchen by Id for dish ", zap.Error(err))
+		return nil, err
+	}
+	res.KitchenName = kitchen.Name
+
 	return res, nil
 }
 
 func (d *DishService) GetDishes(ctx context.Context, filter *pb.Pagination) (*pb.Dishes, error) {
+
+	_, err := d.kitchenClient.ValidateKitchenId(ctx, &pbk.Id{Id: filter.Id})
+	if err != nil {
+		d.log.Info("Invalid kitchen Id ", zap.Error(err))
+		return nil, err
+	}
+
 	res, err := d.dishRepo.GetDishes(ctx, filter)
 	if err != nil {
 		d.log.Error("failed to get dishes ", zap.Error(err))
 		return nil, err
+	}
+
+	for i := 0; i < len(res.Dishes); i++ {
+		kitchen, err := d.kitchenClient.GetKitchenById(ctx, &pbk.Id{Id: res.Dishes[i].KitchenId})
+		if err != nil {
+			d.log.Error("failed to get kitchen by Id for dish ", zap.Error(err))
+			return nil, err
+		}
+		res.Dishes[i].KitchenName = kitchen.Name
 	}
 
 	return res, nil
@@ -69,6 +91,13 @@ func (d *DishService) GetDishById(ctx context.Context, id *pb.Id) (*pb.DishInfo,
 		d.log.Error("failed to get dish by id ", zap.Error(err))
 		return nil, err
 	}
+
+	kitchen, err := d.kitchenClient.GetKitchenById(ctx, &pbk.Id{Id: res.KitchenId})
+	if err != nil {
+		d.log.Error("failed to get kitchen by Id for dish ", zap.Error(err))
+		return nil, err
+	}
+	res.KitchenName = kitchen.Name
 
 	return res, nil
 }

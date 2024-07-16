@@ -54,10 +54,11 @@ func main() {
 	server := grpc.NewServer()
 
 	pbd.RegisterDishServer(server, service.NewDishService(systemConfig))
-	pbo.RegisterOrderServer(server, pbo.UnimplementedOrderServer{})
-	pbp.RegisterPaymentServer(server, pbp.UnimplementedPaymentServer{})
-	pbr.RegisterReviewServer(server, pbr.UnimplementedReviewServer{})
+	pbo.RegisterOrderServer(server, service.NewOrderService(systemConfig))
+	pbp.RegisterPaymentServer(server, service.NewPaymentService(systemConfig))
+	pbr.RegisterReviewServer(server, service.NewReviewService(systemConfig))
 
+	systemConfig.Logger.Info("Server is Running...")
 	err = server.Serve(listener)
 	if err != nil {
 		systemConfig.Logger.Fatal("grpc Failed to serve listener", zap.Error(err))
