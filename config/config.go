@@ -9,17 +9,18 @@ import (
 )
 
 type Config struct {
-	ORDER_SERVICE_PORT  string
-	DB_HOST             string
-	DB_PORT             string
-	DB_NAME             string
-	DB_USER             string
-	DB_PASSWORD         string
-	REDIS_HOST          string
-	REDIS_PORT          string
-	REDIS_PASSWORD      string
-	LOG_PATH            string
-	APP_PASSWORD        string
+	ORDER_SERVICE_PORT string
+	AUTH_SERVICE_PORT  string
+	DB_HOST            string
+	DB_PORT            string
+	DB_NAME            string
+	DB_USER            string
+	DB_PASSWORD        string
+	REDIS_HOST         string
+	REDIS_PORT         string
+	REDIS_PASSWORD     string
+	LOG_PATH           string
+	APP_PASSWORD       string
 }
 
 func Load() *Config {
@@ -29,6 +30,8 @@ func Load() *Config {
 
 	config := Config{}
 
+	config.ORDER_SERVICE_PORT = cast.ToString(coalesce("ORDER_SERVICE_PORT", "localhost"))
+	config.AUTH_SERVICE_PORT = cast.ToString(coalesce("AUTH_SERVICE_PORT", "localhost"))
 	config.DB_HOST = cast.ToString(coalesce("DB_HOST", "localhost"))
 	config.DB_PORT = cast.ToString(coalesce("DB_PORT", "5432"))
 	config.DB_USER = cast.ToString(coalesce("DB_USER", "postgres"))

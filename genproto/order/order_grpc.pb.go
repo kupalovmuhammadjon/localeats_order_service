@@ -23,7 +23,7 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type OrderClient interface {
 	CreateOrder(ctx context.Context, in *ReqCreateOrder, opts ...grpc.CallOption) (*OrderInfo, error)
-	UpdateOrderStatus(ctx context.Context, in *Status, opts ...grpc.CallOption) (*Void, error)
+	UpdateOrderStatus(ctx context.Context, in *Status, opts ...grpc.CallOption) (*StatusRes, error)
 	GetOrderById(ctx context.Context, in *Id, opts ...grpc.CallOption) (*OrderInfo, error)
 	GetOrdersForUser(ctx context.Context, in *Id, opts ...grpc.CallOption) (*Orders, error)
 	GetOrdersForChef(ctx context.Context, in *Id, opts ...grpc.CallOption) (*Orders, error)
@@ -52,8 +52,8 @@ func (c *orderClient) CreateOrder(ctx context.Context, in *ReqCreateOrder, opts 
 	return out, nil
 }
 
-func (c *orderClient) UpdateOrderStatus(ctx context.Context, in *Status, opts ...grpc.CallOption) (*Void, error) {
-	out := new(Void)
+func (c *orderClient) UpdateOrderStatus(ctx context.Context, in *Status, opts ...grpc.CallOption) (*StatusRes, error) {
+	out := new(StatusRes)
 	err := c.cc.Invoke(ctx, "/order.Order/UpdateOrderStatus", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -147,7 +147,7 @@ func (c *orderClient) ManageWorkingHours(ctx context.Context, in *Id, opts ...gr
 // for forward compatibility
 type OrderServer interface {
 	CreateOrder(context.Context, *ReqCreateOrder) (*OrderInfo, error)
-	UpdateOrderStatus(context.Context, *Status) (*Void, error)
+	UpdateOrderStatus(context.Context, *Status) (*StatusRes, error)
 	GetOrderById(context.Context, *Id) (*OrderInfo, error)
 	GetOrdersForUser(context.Context, *Id) (*Orders, error)
 	GetOrdersForChef(context.Context, *Id) (*Orders, error)
@@ -167,7 +167,7 @@ type UnimplementedOrderServer struct {
 func (UnimplementedOrderServer) CreateOrder(context.Context, *ReqCreateOrder) (*OrderInfo, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateOrder not implemented")
 }
-func (UnimplementedOrderServer) UpdateOrderStatus(context.Context, *Status) (*Void, error) {
+func (UnimplementedOrderServer) UpdateOrderStatus(context.Context, *Status) (*StatusRes, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateOrderStatus not implemented")
 }
 func (UnimplementedOrderServer) GetOrderById(context.Context, *Id) (*OrderInfo, error) {

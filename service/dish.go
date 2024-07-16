@@ -3,27 +3,37 @@ package service
 import (
 	"context"
 	"order_service/models"
+	"order_service/pkg/connections"
 	"order_service/storage/postgres"
 
 	pb "order_service/genproto/dish"
+	pbk "order_service/genproto/kitchen"
 
 	"go.uber.org/zap"
 )
 
 type DishService struct {
-	dishRepo *postgres.DishRepo
-	log      *zap.Logger
+	dishRepo      *postgres.DishRepo
+	kitchenClient pbk.KitchenClient
+	log           *zap.Logger
 	pb.UnimplementedDishServer
 }
 
 func NewDishService(sysConfig *models.SystemConfig) *DishService {
 	return &DishService{
-		dishRepo: postgres.NewDishRepo(sysConfig.PostgresDb),
-		log:      sysConfig.Logger,
+		dishRepo:      postgres.NewDishRepo(sysConfig.PostgresDb),
+		kitchenClient: connections.NewKitchenService(sysConfig),
+		log:           sysConfig.Logger,
 	}
 }
 
 func (d *DishService) CreateDish(ctx context.Context, dish *pb.ReqCreateDish) (*pb.DishInfo, error) {
+
+	_, err := d.kitchenClient.ValidateKitchenId(ctx, &pbk.Id{Id: dish.KitchenId})
+	if err != nil {
+		d.log.Info("Invalid kitchen Id ", zap.Error(err))
+		return nil, err
+	}
 	res, err := d.dishRepo.CreateDish(ctx, dish)
 	if err != nil {
 		d.log.Error("failed to create dish ", zap.Error(err))
@@ -92,4 +102,3 @@ func (d *DishService) UpdateNutritionInfo(ctx context.Context, info *pb.Nutritio
 
 	return dish, nil
 }
-
