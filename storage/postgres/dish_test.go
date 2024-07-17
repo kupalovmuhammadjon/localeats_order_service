@@ -1,5 +1,13 @@
 package postgres
 
+import (
+	"context"
+	"encoding/json"
+	pb "order_service/genproto/dish"
+	pbu "order_service/genproto/user"
+	"testing"
+)
+
 func newDishRepo() *DishRepo {
 	db, err := ConnectDB()
 	if err != nil {
@@ -73,3 +81,34 @@ func newDishRepo() *DishRepo {
 // 		t.Error(err)
 // 	}
 // }
+
+func TestRecommendDishes(t *testing.T) {
+	d := newDishRepo()
+
+	filter := &pb.Filter{
+		Page:  1,
+		Limit: 10,
+	}
+	jsond := `{
+  "cuisine_type": "uzbek",
+  "dietary_preferences": [
+    "gosht", "guruch"
+  ],
+  "favorite_kitchen_ids": [
+"448fd453-e2ac-4c5d-83ee-ec6a0b7140ed"
+  ],
+  "user_id": "7a84d4e9-77b0-42fa-86fe-f5d562f855c3"
+}`
+	preferences := &pbu.PreferencesRes{}
+	json.Unmarshal([]byte(jsond), &preferences)
+
+	kitchens := []string{ }
+
+	res, err := d.RecommendDishes(context.Background(), filter, preferences, kitchens)
+	if err != nil {
+		t.Fatalf("RecommendDishes failed: %v", err)
+	}
+	if len(res.Dishes) == 0 {
+		t.Fatalf("Expected to find recommended dishes, but got none")
+	}
+}

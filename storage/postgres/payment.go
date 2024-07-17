@@ -30,7 +30,7 @@ func (p *PaymentRepo) CreatePayment(ctx context.Context, req *pb.ReqCreatePaymen
 		payment_method,
 		transaction_id,
 		created_at,
-		updated_at), 
+		updated_at)
 	values($1, $2, $3, $4, $5, $6, $7, $8, $9)
 	`
 	currentTime := time.Now().Format(time.RFC3339)

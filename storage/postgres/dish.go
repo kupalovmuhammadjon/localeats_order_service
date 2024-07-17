@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 	pb "order_service/genproto/dish"
+	pbu "order_service/genproto/user"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -102,7 +104,7 @@ func (d *DishRepo) GetDishes(ctx context.Context, pagination *pb.Pagination) (*p
 	from
 		dishes
 	where
-		deleted_at is null and kitchen_id = $1
+		deleted_at is null and kitchen_id = $1 and available = true
 	`
 	query += fmt.Sprintf(" offset %d", (pagination.Page-1)*pagination.Limit)
 	query += fmt.Sprintf(" limit %d", pagination.Limit)
@@ -224,4 +226,75 @@ func (d *DishRepo) UpdateNutritionInfo(ctx context.Context, info *pb.NutritionIn
 	res.NutritionInfo = nutritionInfo.String
 
 	return res, err
+}
+
+func (d *DishRepo) RecommendDishes(ctx context.Context, filter *pb.Filter, user *pbu.PreferencesRes, kitchens []string) (*pb.Recommendations, error) {
+	/*
+		Recommendation criterias
+		user preferences (favourite kitchens, dieatery and cusine type)
+		latest highly rated food
+	*/
+
+	query := `
+	select
+		id, kitchen_id, price, category, available
+	from
+		dishes
+	where
+		deleted_at is null and available = true
+		and(
+			kitchen_id = any($1) or 
+			to_tsvector(dietary_info::text) @@ plainto_tsquery($2)
+		)
+	`
+
+	query += fmt.Sprintf(" offset %d", (filter.Page-1)*filter.Limit)
+	query += fmt.Sprintf(" limit %d", filter.Limit)
+
+	search := strings.Join(user.DietaryPreferences, " ")
+
+	rows, err := d.Db.QueryContext(ctx, query, pq.Array(kitchens), search)
+	if err != nil {
+		return nil, err
+	}
+
+	dishes := pb.Recommendations{}
+	for rows.Next() {
+		dish := pb.DishShortInfo{}
+		err := rows.Scan(&dish.Id, &dish.KitchenId, &dish.Price, &dish.Category, &dish.Available)
+		if err != nil {
+			return nil, err
+		}
+		dishes.Dishes = append(dishes.Dishes, &dish)
+	}
+
+	return &dishes, rows.Err()
+}
+
+func (d *DishRepo) GetTotalRecommendation(ctx context.Context, filter *pb.Filter, user *pbu.PreferencesRes, kitchens []string) (int, error) {
+	query := `
+	select
+		count(*)
+	from
+		dishes
+	where
+		deleted_at is null and available = true
+		and(
+			kitchen_id = any($1) or 
+			to_tsvector(dietary_info::text) @@ plainto_tsquery($2)
+		)
+	`
+
+	search := strings.Join(user.DietaryPreferences, " ")
+
+	var total int
+	err := d.Db.QueryRowContext(ctx, query, pq.Array(kitchens), search).Scan(&total)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return 0, nil
+		}
+		return 0, err
+	}
+
+	return total, nil
 }

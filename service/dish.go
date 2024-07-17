@@ -8,6 +8,7 @@ import (
 
 	pb "order_service/genproto/dish"
 	pbk "order_service/genproto/kitchen"
+	pbu "order_service/genproto/user"
 
 	"go.uber.org/zap"
 )
@@ -15,6 +16,7 @@ import (
 type DishService struct {
 	dishRepo      *postgres.DishRepo
 	kitchenClient pbk.KitchenClient
+	userClient    pbu.UserServiceClient
 	log           *zap.Logger
 	pb.UnimplementedDishServer
 }
@@ -23,6 +25,7 @@ func NewDishService(sysConfig *models.SystemConfig) *DishService {
 	return &DishService{
 		dishRepo:      postgres.NewDishRepo(sysConfig.PostgresDb),
 		kitchenClient: connections.NewKitchenService(sysConfig),
+		userClient:    connections.NewUserService(sysConfig),
 		log:           sysConfig.Logger,
 	}
 }
@@ -125,9 +128,39 @@ func (d *DishService) ValidateDishId(ctx context.Context, id *pb.Id) (*pb.Void, 
 func (d *DishService) UpdateNutritionInfo(ctx context.Context, info *pb.NutritionInfo) (*pb.DishInfo, error) {
 	dish, err := d.dishRepo.UpdateNutritionInfo(ctx, info)
 	if err != nil {
-		d.log.Info("invalid dish id ", zap.Error(err))
+		d.log.Info("failed to update NutritionInfo ", zap.Error(err))
 		return nil, err
 	}
 
 	return dish, nil
+}
+
+func (d *DishService) RecommendDishes(ctx context.Context, filter *pb.Filter) (*pb.Recommendations, error) {
+	pref, err := d.userClient.GetUserPreference(ctx, &pbu.Id{Id: filter.Id})
+	if err != nil {
+		d.log.Error("failed to get user preferences for recommend dish ", zap.Error(err))
+		return nil, err
+	}
+
+	ids, err := d.kitchenClient.GetKitchenIdsByCusineType(ctx, &pbk.Cusine{Cusine: pref.CuisineType})
+	if err != nil {
+		d.log.Error("failed to get kitchen ids ", zap.Error(err))
+		return nil, err
+	}
+	res, err := d.dishRepo.RecommendDishes(ctx, filter, pref, ids.Ids)
+	if err != nil {
+		d.log.Error("failed to recommend dishes ", zap.Error(err))
+		return nil, err
+	}
+
+	total, err := d.dishRepo.GetTotalRecommendation(ctx, filter, pref, ids.Ids)
+	if err != nil {
+		d.log.Error("failed to get total number of dishes ", zap.Error(err))
+		return nil, err
+	}
+	res.Total = int32(total)
+	res.Page = filter.Page
+	res.Limit = filter.Limit
+
+	return res, nil
 }

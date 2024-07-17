@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	pb "order_service/genproto/order"
+	"order_service/models"
 	"time"
 
 	"github.com/google/uuid"
@@ -59,7 +60,6 @@ func (o *OrderRepo) CreateOrder(ctx context.Context, order *pb.ReqCreateOrder, t
 
 	return res, nil
 }
-
 
 func (o *OrderRepo) UpdateOrderStatus(ctx context.Context, status *pb.Status) (*pb.StatusRes, error) {
 	query := `
@@ -125,7 +125,7 @@ func (o *OrderRepo) GetOrdersForUser(ctx context.Context, filter *pb.Filter) (*p
 	where
 		user_id = $1 
 	`
-	query += fmt.Sprintf(" offset %d", (filter.Page-1) * filter.Limit)
+	query += fmt.Sprintf(" offset %d", (filter.Page-1)*filter.Limit)
 	query += fmt.Sprintf(" limit %d", filter.Limit)
 
 	rows, err := o.Db.QueryContext(ctx, query, filter.Id)
@@ -135,7 +135,7 @@ func (o *OrderRepo) GetOrdersForUser(ctx context.Context, filter *pb.Filter) (*p
 
 	orders := pb.Orders{}
 
-	for rows.Next(){
+	for rows.Next() {
 		var order pb.OrderShortInfo
 
 		err := rows.Scan(&order.Id, &order.UserId, &order.Status, &order.TotalAmount, &order.DeliveryTime)
@@ -165,7 +165,7 @@ func (o *OrderRepo) GetOrdersForChef(ctx context.Context, filter *pb.Filter) (*p
 	where
 		kitchen_id = $1 
 	`
-	query += fmt.Sprintf(" offset %d", (filter.Page-1) * filter.Limit)
+	query += fmt.Sprintf(" offset %d", (filter.Page-1)*filter.Limit)
 	query += fmt.Sprintf(" limit %d", filter.Limit)
 
 	rows, err := o.Db.QueryContext(ctx, query, filter.Id)
@@ -175,7 +175,7 @@ func (o *OrderRepo) GetOrdersForChef(ctx context.Context, filter *pb.Filter) (*p
 
 	orders := pb.Orders{}
 
-	for rows.Next(){
+	for rows.Next() {
 		var order pb.OrderShortInfo
 
 		err := rows.Scan(&order.Id, &order.UserId, &order.Status, &order.TotalAmount, &order.DeliveryTime)
@@ -192,7 +192,7 @@ func (o *OrderRepo) GetOrdersForChef(ctx context.Context, filter *pb.Filter) (*p
 	return &orders, rows.Err()
 }
 
-func (o *OrderRepo) DeleteOrder(ctx context.Context, id string) error{
+func (o *OrderRepo) DeleteOrder(ctx context.Context, id string) error {
 	query := `
 	update
 		orders
@@ -245,9 +245,119 @@ func (o *OrderRepo) GetOrderCount(ctx context.Context) int {
 	return count
 }
 
-func (o *OrderRepo) RecommendDishes(ctx context.Context, filter *pb.Filter) (*pb.Recommendations, error){
+func (o *OrderRepo) GetKitchenStatistics(ctx context.Context, filter *pb.DateFilter) (*pb.KitchenStatistics, error) {
+	query := `
+	with dish_data as (
+		select
+			jsonb_array_elements(items) as dish
+		from
+			orders
+		where
+			deleted_at is null and kitchen_id = $1 and
+			created_at between $2 and $3
+	),
+	dish_stats as (
+		select
+			dish ->> 'dish_id' as id,
+			count(*) as orders_count
+		from
+			dish_data
+		group by
+			dish ->> 'dish_id'
+		order by
+			orders_count desc
+	)
+	select
+		id,
+		orders_count
+	from
+		dish_stats
+	`
+
+	kitchenStats := pb.KitchenStatistics{}
+
+	rows, err := o.Db.QueryContext(ctx, query, filter.Id, filter.StartDate, filter.EndDate)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	dishStats := []*pb.DishStats{}
+	for rows.Next() {
+		dishStat := &pb.DishStats{}
+		err := rows.Scan(&dishStat.Id, &dishStat.OrdersCount)
+		if err != nil {
+			return nil, err
+		}
+		dishStats = append(dishStats, dishStat)
+	}
+
+	kitchenStats.TopDishes = dishStats
+
+	return &kitchenStats, rows.Err()
+}
+
+
+func (o *OrderRepo) GetRevenueStatsForKitchen(ctx context.Context, filter *pb.DateFilter) (*models.RevenueStats, error){
 	query := `
 	select
-		
+		count(*),
+		sum(total_amount)
+	from
+		orders
+	where
+		kitchen_id = $1 and
+			created_at between $2 and $3
 	`
+	stats := models.RevenueStats{}
+	row := o.Db.QueryRowContext(ctx, query, filter.Id, filter.StartDate, filter.EndDate)
+
+	err := row.Scan(&stats.TotalOrders, &stats.Revenue)
+
+	return &stats, err
+}
+
+func (o *OrderRepo) GetUserStatistics(ctx context.Context, filter *pb.DateFilter) (*pb.UserStatistics, error) {
+	query := `
+	with kitchen_data as (
+		select
+			kitchen_id,
+			total_amount
+		from
+			orders
+		where
+			deleted_at is null and user_id = $1 and
+			created_at between $2 and $3
+	)
+	select
+		kitchen_id,
+		count(*),
+		sum(total_amount)
+	from
+		kitchen_data
+	group by
+		kitchen_id
+	`
+
+	userStats := pb.UserStatistics{}
+
+	rows, err := o.Db.QueryContext(ctx, query, filter.Id, filter.StartDate, filter.EndDate)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	kitchenStats := []*pb.KitchenStats{}
+	for rows.Next() {
+		kitchenStat := &pb.KitchenStats{}
+		err := rows.Scan(&kitchenStat.Id, &kitchenStat.OrdersCount, &kitchenStat.TotalSpent)
+		if err != nil {
+			return nil, err
+		}
+		kitchenStats = append(kitchenStats, kitchenStat)
+	}
+
+	userStats.FavoriteKitchens = kitchenStats
+
+	return &userStats, rows.Err()
 }
