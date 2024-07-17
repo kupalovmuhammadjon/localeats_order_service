@@ -51,7 +51,8 @@ CREATE TABLE payments (
     status VARCHAR(20) NOT NULL,
     payment_method payment_method NOT NULL,
     transaction_id VARCHAR(100),
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE working_hours (

@@ -21,14 +21,17 @@ func NewOrderRepo(db *sql.DB) *OrderRepo {
 
 func (o *OrderRepo) CreateOrder(ctx context.Context, order *pb.ReqCreateOrder, total float64) (*pb.OrderInfo, error) {
 	query := `
-	insert into
-		orders(
-			id, user_id, kitchen_id, items, total_amount, status, delivery_address,
-			delivery_time,
-			created_at,
-			updated_at)
-		values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+	INSERT INTO orders (
+		id, user_id, kitchen_id, items, total_amount, status, delivery_address,
+		delivery_time, created_at, updated_at
+	) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 	`
+
+	now := time.Now()
+	deliveryTime := now.Add(time.Minute * 15).Format(time.RFC3339)
+	createdAt := now.Format(time.RFC3339)
+	updatedAt := now.Format(time.RFC3339)
+
 	res := &pb.OrderInfo{
 		Id:              uuid.NewString(),
 		UserId:          order.UserId,
@@ -37,10 +40,11 @@ func (o *OrderRepo) CreateOrder(ctx context.Context, order *pb.ReqCreateOrder, t
 		TotalAmount:     total,
 		Status:          "preparing",
 		DeliveryAddress: order.DeliveryAddress,
-		DeliveryTime:    time.Now().Add(time.Minute * 15).Format(time.RFC3339),
-		CreatedAt:       time.Now().Format(time.RFC3339),
-		UpdatedAt:       time.Now().Format(time.RFC3339),
+		DeliveryTime:    deliveryTime,
+		CreatedAt:       createdAt,
+		UpdatedAt:       updatedAt,
 	}
+
 	data, err := json.Marshal(res.Items)
 	if err != nil {
 		return nil, err
@@ -49,8 +53,13 @@ func (o *OrderRepo) CreateOrder(ctx context.Context, order *pb.ReqCreateOrder, t
 	_, err = o.Db.ExecContext(ctx, query, res.Id, res.UserId, res.KitchenId, string(data), total, res.Status,
 		res.DeliveryAddress, res.DeliveryTime, res.CreatedAt, res.UpdatedAt)
 
-	return res, err
+	if err != nil {
+		return nil, err
+	}
+
+	return res, nil
 }
+
 
 func (o *OrderRepo) UpdateOrderStatus(ctx context.Context, status *pb.Status) (*pb.StatusRes, error) {
 	query := `
@@ -84,15 +93,23 @@ func (o *OrderRepo) GetOrderById(ctx context.Context, id string) (*pb.OrderInfo,
 		id = $1
 	`
 
+	items := ""
 	order := pb.OrderInfo{}
 	row := o.Db.QueryRowContext(ctx, query, id)
-	err := row.Scan(&order.Id, &order.UserId, &order.KitchenId, &order.Items, &order.TotalAmount, &order.Status,
+	err := row.Scan(&order.Id, &order.UserId, &order.KitchenId, &items, &order.TotalAmount, &order.Status,
 		&order.DeliveryAddress, &order.DeliveryTime, &order.CreatedAt, &order.UpdatedAt)
-
 	if err != nil {
 		return nil, err
 	}
-	return &order, row.Err()
+
+	itemsObj := []*pb.Item{}
+	err = json.Unmarshal([]byte(items), &itemsObj)
+	if err != nil {
+		return nil, err
+	}
+	order.Items = itemsObj
+
+	return &order, nil
 }
 
 func (o *OrderRepo) GetOrdersForUser(ctx context.Context, filter *pb.Filter) (*pb.Orders, error) {
@@ -226,4 +243,11 @@ func (o *OrderRepo) GetOrderCount(ctx context.Context) int {
 	}
 
 	return count
+}
+
+func (o *OrderRepo) RecommendDishes(ctx context.Context, filter *pb.Filter) (*pb.Recommendations, error){
+	query := `
+	select
+		
+	`
 }

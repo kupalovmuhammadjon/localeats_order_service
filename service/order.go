@@ -40,7 +40,7 @@ func (o *OrderService) CreateOrder(ctx context.Context, order *pb.ReqCreateOrder
 		o.log.Info("invalid kitchen id ", zap.Error(err))
 		return nil, err
 	}
-	_, err = o.userClient.ValidateUserId(ctx, &pbu.Id{Id: order.KitchenId})
+	_, err = o.userClient.ValidateUserId(ctx, &pbu.Id{Id: order.UserId})
 	if err != nil {
 		o.log.Info("invalid user id ", zap.Error(err))
 		return nil, err
